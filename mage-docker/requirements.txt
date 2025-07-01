@@ -2,3 +2,4 @@ pyspark
 awscli
 boto3
 requests
+pandas>=2.0.0
