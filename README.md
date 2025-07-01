@@ -49,6 +49,7 @@ A arquitetura organiza os dados em três camadas principais:
    ```bash
    git clone https://github.com/Gabriellr/bees-breweries-data-engineering-case.git
    cd bees-breweries-data-engineering-case
+   cd mage-docker
 
 2. **Instale e inicie o Docker**
    Certifique-se de que o Docker Desktop está instalado e em execução na sua máquina.
