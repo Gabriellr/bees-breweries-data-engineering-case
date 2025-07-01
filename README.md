@@ -1,97 +1,105 @@
 ## BEES Data Engineering – Breweries Case
 
-Este pipeline de dados, desenvolvido em Docker, realiza a extração de informações da API Open Brewery DB. Utilizando Apache Spark para processamento e transformação, e Mage.ai para orquestração, ele aplica a arquitetura Medallion para estruturar os dados em três camadas.
+This data pipeline, developed with Docker, extracts information from the Open Brewery DB API. Using Apache Spark for processing and transformation, and Mage.ai for orchestration, it applies the Medallion architecture to structure the data in three layers.
 
-Os dados são armazenados em um Data Lake na nuvem (AWS S3 ). Na camada Bronze, os dados brutos da API são salvos em formato Parquet; na camada Silver, são transformados e particionados por localização; e na camada Gold, os dados são agregados e enriquecidos com métricas como o número de cervejarias por tipo e região.
+The data is stored in a cloud-based Data Lake (AWS S3). In the Bronze layer, raw data from the API is saved in Parquet format; in the Silver layer, the data is transformed and partitioned by location; and in the Gold layer, the data is aggregated and enriched with metrics such as the number of breweries by type and region.
 
-# Tecnologias e Ferramentas
+## Technologies and Tools
 
-- **Mage.ai** – Orquestração do pipeline  
-- **PySpark** – Processamento distribuído  
-- **Pandas** – Manipulação de dados leves  
-- **AWS S3** – Camadas do data lake  
-- **boto3** – Integração programática com S3  
-- **Docker** – Containerização do ambiente  
-    
- ##  Arquitetura de Pipeline
+- **Mage.ai** – Pipeline orchestration
+- **PySpark** – Distributed processing
+- **Pandas** – Lightweight data manipulation
+- **AWS S3** – Data lake layers
+- **boto3** – Programmatic integration with S3
+- **Docker** – Environment containerization
 
-O pipeline foi desenvolvido com base na arquitetura **Medallion**, utilizando tecnologias modernas, escaláveis e com foco em boas práticas de engenharia de dados.
+## Pipeline Architecture
 
-###  Estrutura em Camadas (Medallion)
+The pipeline was developed based on the **Medallion architecture**, using modern, scalable technologies and following data engineering best practices.
 
-A arquitetura organiza os dados em três camadas principais:
+### Layered Structure (Medallion)
 
-- **🔹 Bronze (Raw)**  
-  Armazena os dados brutos coletados diretamente da API, sem transformações. Serve como fonte de verdade imutável.
+The architecture organizes data into three main layers:
 
-- **🔸 Silver (Curated)**  
-  Realiza a limpeza, normalização e enriquecimento dos dados. Salva em formato colunar (Parquet), particionado por país e região.
+- **🔹 Bronze (Raw)**\
+  Stores raw data collected directly from the API without transformations. Serves as the immutable source of truth.
 
-- **🥇 Gold (Analytics)**  
-  Dados prontos para consumo analítico. Aqui, são geradas **agregações por tipo de cervejaria e localização**, otimizando performance para dashboards e relatórios.
+- **🔸 Silver (Curated)**\
+  Cleans, normalizes, and enriches the data. Saves it in columnar format (Parquet), partitioned by country and region.
 
-![bees-brew drawio](https://github.com/user-attachments/assets/30379ef6-8a66-4e1f-bc69-9505c81358cc)
+- **🥇 Gold (Analytics)**\
+  Data ready for analytical consumption. This layer contains **aggregations by brewery type and location**, optimizing performance for dashboards and reports.
 
-## Instalação
 
-### Pré-requisitos
 
-- Docker instalado na sua máquina (versão recomendada >= 20.x)
+## Installation
 
-### Passos para rodar o projeto
+### Prerequisites
 
-### Passos para rodar o projeto
+- Docker installed on your machine (recommended version >= 20.x)
 
-1. **Clone o repositório**
+### Steps to Run the Project
 
-   Clone este projeto em sua máquina local:
+1. **Clone the Repository**
+
+   Clone this project to your local machine:
 
    ```bash
    git clone https://github.com/Gabriellr/bees-breweries-data-engineering-case.git
    cd bees-breweries-data-engineering-case
    cd mage-docker
+   ```
 
-2. **Instale e inicie o Docker**
-   Certifique-se de que o Docker Desktop está instalado e em execução na sua máquina.
-Com o Docker pronto, navegue até a raiz do projeto mage-docker e execute o seguinte comando para iniciar o Mage.ai:
+2. **Configure Environment Variables**\
+   Create a `.env` file in the root directory with your AWS credentials for reading and writing to the S3 bucket. Example:
+
+   ```env
+   AWS_ACCESS_KEY_ID=your_access_key_id
+   AWS_SECRET_ACCESS_KEY=your_secret_access_key
+   AWS_DEFAULT_REGION=us-east-1
+   ```
+
+3. **Install and Start Docker**\
+   Make sure Docker Desktop is installed and running on your machine.\
+   With Docker ready, navigate to the `mage-docker` project root and run the following command to start Mage.ai:
 
    ```bash
    docker-compose up --build
+   ```
 
- 3. **Executando o Pipeline pela Interface do Mage.ai**
+4. **Running the Pipeline via Mage.ai Interface**
 
-Para executar manualmente seu pipeline no Mage.ai, siga os passos abaixo:
+To manually run your pipeline in Mage.ai, follow the steps below:
 
-  1. Acesse a interface web em: [http://localhost:6789](http://localhost:6789) ou [http://localhost:6789/pipelines/elt_proj_breweries/triggers](http://localhost:6789/pipelines/elt_proj_breweries/triggers) 
+1. Access the web interface at: [http://localhost:6789](http://localhost:6789) or [http://localhost:6789/pipelines/elt\_proj\_breweries/triggers](http://localhost:6789/pipelines/elt_proj_breweries/triggers)
 
-  2. No menu lateral, clique na aba **Pipelines**.
+2. In the side menu, click on the **Pipelines** tab.
 
-  3. Selecione o pipeline desejado (por exemplo: `elt_proj_breweries`).
+3. Select the desired pipeline (e.g., `elt_proj_breweries`).
 
-  4. Na página do pipeline, vá até a aba **Triggers**.
+4. On the pipeline page, go to the **Triggers** tab.
 
-  5. Clique no botão **`Run@once`** para iniciar a execução manual do pipeline.
-![mage6](https://github.com/user-attachments/assets/6a29ce5c-736d-4517-9004-7835fe192dff)
+5. Click the \`\` button to start the manual execution of the pipeline.
 
-
-
-Você poderá **acompanhar o progresso**, **verificar os logs** e **analisar os resultados em tempo real** diretamente pela interface gráfica.
+You will be able to **track progress**, **check logs**, and **view real-time results** directly through the graphical interface.
 
 ---
-### Melhoria Recomendada: Observabilidade e Governança com AWS
 
-O pipeline foi desenvolvido com ferramentas gratuitas e de código aberto (`Mage.ai`, `PySpark`, `Docker` e `AWS S3`), priorizando acessibilidade e fácil reprodutibilidade. No entanto, para ambientes corporativos ou produtivos, recomenda-se a adoção de serviços gerenciados da AWS que ampliam significativamente a **observabilidade**, **governança** e **eficiência operacional**:
+### 🚀 Recommended Improvement: Observability and Data Governance with AWS
 
-- Monitoramento & Alertas:
-  Utilizar o **Amazon CloudWatch** em conjunto com o **Amazon SNS** para monitorar falhas, tempos de execução e criar alertas automáticos em tempo real.
+The pipeline was developed using free and open-source tools (`Mage.ai`, `PySpark`, `Docker`, and `AWS S3`), prioritizing accessibility and ease of reproduction. However, for enterprise or production environments, the adoption of AWS managed services is highly recommended to significantly improve **observability**, **governance**, and **operational efficiency**:
 
-- Catálogo de Dados:
-  Integrar o **AWS Glue Data Catalog** para registrar metadados das camadas Bronze, Silver e Gold, promovendo descoberta, versionamento e auditoria de dados.
+- **Monitoring & Alerts:**\
+  Use **Amazon CloudWatch** in combination with **Amazon SNS** to monitor failures, execution times, and trigger automated real-time alerts.
 
-- Virtualização de Dados:  
-  Adotar o **Amazon Athena** para consultas SQL diretamente sobre os dados armazenados no S3, sem a necessidade de ETL ou cargas adicionais.
+- **Data Cataloging:**\
+  Integrate **AWS Glue Data Catalog** to register metadata from the Bronze, Silver, and Gold layers, enabling data discovery, versioning, and auditing.
 
-- Qualidade de Dados:  
-  Incorporar ferramentas como **AWS Deequ** (Spark) ou **Amazon DataZone** para rastrear qualidade, integridade e regras de negócio nos dados de forma automatizada.
-  
-> *Esses recursos não foram utilizados nesta versão do projeto para manter o custo zero, mas são altamente recomendados em contextos com maior volume, criticidade e requisitos de compliance e escalabilidade.*
+- **Data Virtualization:**\
+  Adopt **Amazon Athena** for SQL queries directly on data stored in S3, without the need for additional ETL processes or loading into databases.
+
+- **Data Quality Monitoring:**\
+  Incorporate tools like **AWS Deequ** (Spark) or **Amazon DataZone** to track data integrity, consistency, and business rule compliance automatically.
+
+> *These features were not used in this version to maintain a zero-cost project, but they are highly recommended for environments with higher volume, criticality, and compliance or scalability requirements.*
+
