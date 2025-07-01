@@ -75,7 +75,7 @@ To manually run your pipeline in Mage.ai, follow the steps below:
 
 2. In the side menu, click on the **Pipelines** tab.
 
-3. Select the desired pipeline (e.g., `elt_proj_breweries`).
+3. Select the desired pipeline `elt_proj_breweries`.
 
 4. On the pipeline page, go to the **Triggers** tab.
 
