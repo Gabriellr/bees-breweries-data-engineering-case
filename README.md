@@ -1,7 +1,6 @@
 ## BEES Data Engineering – Breweries Case
 
 This data pipeline, developed with Docker, extracts information from the Open Brewery DB API. Using Apache Spark for processing and transformation, and Mage.ai for orchestration, it applies the Medallion architecture to structure the data in three layers.
-
 The data is stored in a cloud-based Data Lake (AWS S3). In the Bronze layer, raw data from the API is saved in Parquet format; in the Silver layer, the data is transformed and partitioned by location; and in the Gold layer, the data is aggregated and enriched with metrics such as the number of breweries by type and region.
 
 ## Technologies and Tools
