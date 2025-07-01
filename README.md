@@ -31,6 +31,7 @@ The architecture organizes data into three main layers:
   Data ready for analytical consumption. This layer contains **aggregations by brewery type and location**, optimizing performance for dashboards and reports.
 
 
+![bees-brew drawio](https://github.com/user-attachments/assets/4e8992d9-200d-422c-89bf-e606c121e575)
 
 ## Installation
 
@@ -79,13 +80,14 @@ To manually run your pipeline in Mage.ai, follow the steps below:
 
 4. On the pipeline page, go to the **Triggers** tab.
 
-5. Click the \`\` button to start the manual execution of the pipeline.
+5. Click the **`Run@once`** button to start the manual execution of the pipeline.
+![mage6](https://github.com/user-attachments/assets/cfff03e8-9490-4220-9ff2-d226ca2439c7)
 
 You will be able to **track progress**, **check logs**, and **view real-time results** directly through the graphical interface.
 
 ---
 
-### 🚀 Recommended Improvement: Observability and Data Governance with AWS
+### Recommended Improvement: Observability and Data Governance with AWS
 
 The pipeline was developed using free and open-source tools (`Mage.ai`, `PySpark`, `Docker`, and `AWS S3`), prioritizing accessibility and ease of reproduction. However, for enterprise or production environments, the adoption of AWS managed services is highly recommended to significantly improve **observability**, **governance**, and **operational efficiency**:
 
