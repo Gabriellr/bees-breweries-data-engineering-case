@@ -1,7 +1,6 @@
 ## BEES Data Engineering – Breweries Case
 
 This data pipeline, developed with Docker, extracts information from the Open Brewery DB API. Using Apache Spark for processing and transformation, and Mage.ai for orchestration, it applies the Medallion architecture to structure the data in three layers.
-
 The data is stored in a cloud-based Data Lake (AWS S3). In the Bronze layer, raw data from the API is saved in Parquet format; in the Silver layer, the data is transformed and partitioned by location; and in the Gold layer, the data is aggregated and enriched with metrics such as the number of breweries by type and region.
 
 ## Technologies and Tools
@@ -31,6 +30,7 @@ The architecture organizes data into three main layers:
   Data ready for analytical consumption. This layer contains **aggregations by brewery type and location**, optimizing performance for dashboards and reports.
 
 
+![bees-brew drawio](https://github.com/user-attachments/assets/4e8992d9-200d-422c-89bf-e606c121e575)
 
 ## Installation
 
@@ -75,17 +75,18 @@ To manually run your pipeline in Mage.ai, follow the steps below:
 
 2. In the side menu, click on the **Pipelines** tab.
 
-3. Select the desired pipeline (e.g., `elt_proj_breweries`).
+3. Select the desired pipeline `elt_proj_breweries`.
 
 4. On the pipeline page, go to the **Triggers** tab.
 
-5. Click the \`\` button to start the manual execution of the pipeline.
+5. Click the **`Run@once`** button to start the manual execution of the pipeline.
+![mage6](https://github.com/user-attachments/assets/cfff03e8-9490-4220-9ff2-d226ca2439c7)
 
 You will be able to **track progress**, **check logs**, and **view real-time results** directly through the graphical interface.
 
 ---
 
-### 🚀 Recommended Improvement: Observability and Data Governance with AWS
+### Recommended Improvement: Observability and Data Governance with AWS
 
 The pipeline was developed using free and open-source tools (`Mage.ai`, `PySpark`, `Docker`, and `AWS S3`), prioritizing accessibility and ease of reproduction. However, for enterprise or production environments, the adoption of AWS managed services is highly recommended to significantly improve **observability**, **governance**, and **operational efficiency**:
 
