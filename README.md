@@ -57,22 +57,40 @@ Com o Docker pronto, navegue até a raiz do projeto mage-docker e execute o segu
    ```bash
    docker-compose up --build
 
- 2. **Executando o Pipeline pela Interface do Mage.ai**
+ 3. **Executando o Pipeline pela Interface do Mage.ai**
 
 Para executar manualmente seu pipeline no Mage.ai, siga os passos abaixo:
 
-1. Acesse a interface web em: [http://localhost:6789](http://localhost:6789) ou [http://localhost:6789/pipelines/elt_proj_breweries/triggers](http://localhost:6789/pipelines/elt_proj_breweries/triggers) 
+  1. Acesse a interface web em: [http://localhost:6789](http://localhost:6789) ou [http://localhost:6789/pipelines/elt_proj_breweries/triggers](http://localhost:6789/pipelines/elt_proj_breweries/triggers) 
 
-2. No menu lateral, clique na aba **Pipelines**.
+  2. No menu lateral, clique na aba **Pipelines**.
 
-3. Selecione o pipeline desejado (por exemplo: `elt_proj_breweries`).
+  3. Selecione o pipeline desejado (por exemplo: `elt_proj_breweries`).
 
-4. Na página do pipeline, vá até a aba **Triggers**.
+  4. Na página do pipeline, vá até a aba **Triggers**.
 
-5. Clique no botão **`Run@once`** para iniciar a execução manual do pipeline.
+  5. Clique no botão **`Run@once`** para iniciar a execução manual do pipeline.
+![mage6](https://github.com/user-attachments/assets/6a29ce5c-736d-4517-9004-7835fe192dff)
 
-![mageai_run](https://github.com/user-attachments/assets/9360bb6b-a802-41e6-8875-d8119212d7dc)
+
 
 Você poderá **acompanhar o progresso**, **verificar os logs** e **analisar os resultados em tempo real** diretamente pela interface gráfica.
 
 ---
+### Melhoria Recomendada: Observabilidade e Governança com AWS
+
+O pipeline foi desenvolvido com ferramentas gratuitas e de código aberto (`Mage.ai`, `PySpark`, `Docker` e `AWS S3`), priorizando acessibilidade e fácil reprodutibilidade. No entanto, para ambientes corporativos ou produtivos, recomenda-se a adoção de serviços gerenciados da AWS que ampliam significativamente a **observabilidade**, **governança** e **eficiência operacional**:
+
+- Monitoramento & Alertas:
+  Utilizar o **Amazon CloudWatch** em conjunto com o **Amazon SNS** para monitorar falhas, tempos de execução e criar alertas automáticos em tempo real.
+
+- Catálogo de Dados:
+  Integrar o **AWS Glue Data Catalog** para registrar metadados das camadas Bronze, Silver e Gold, promovendo descoberta, versionamento e auditoria de dados.
+
+- Virtualização de Dados:  
+  Adotar o **Amazon Athena** para consultas SQL diretamente sobre os dados armazenados no S3, sem a necessidade de ETL ou cargas adicionais.
+
+- Qualidade de Dados:  
+  Incorporar ferramentas como **AWS Deequ** (Spark) ou **Amazon DataZone** para rastrear qualidade, integridade e regras de negócio nos dados de forma automatizada.
+  
+> *Esses recursos não foram utilizados nesta versão do projeto para manter o custo zero, mas são altamente recomendados em contextos com maior volume, criticidade e requisitos de compliance e escalabilidade.*
