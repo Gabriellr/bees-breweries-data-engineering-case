@@ -1,0 +1,63 @@
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+from mage_ai.io.s3 import S3
+from pandas import DataFrame
+from os import path
+import shutil
+from datetime import datetime
+from pyspark.sql import SparkSession
+
+if 'data_exporter' not in globals():
+    from mage_ai.data_preparation.decorators import data_exporter
+
+
+@data_exporter
+def export_data_to_s3(df: DataFrame, **kwargs) -> None:
+    """
+    Exporta DataFrame (pandas ou Spark) para S3, particionando
+    por 'country' e 'region' no formato Parquet, usando PySpark
+    para o particionamento e Mage S3 para o upload.
+    """
+    config_path = path.join(get_repo_path(), 'io_config.yaml')
+    config_profile = 'default'
+
+    bucket_name = 'db-inbev-silver-layer'
+    folder_name = datetime.today().strftime('%Y-%m-%d')
+    s3_prefix = f"breweries_raw"
+
+    # Inicializa SparkSession
+    spark = SparkSession.builder.getOrCreate()
+
+    # Converte para Spark DataFrame se necessário
+    if not hasattr(df, 'repartition'):
+        df = spark.createDataFrame(df)
+
+    # Define pasta temporária local para salvar dados particionados
+    local_path = f"/tmp/{folder_name}_breweries_raw"
+
+    # Remove pasta local se existir
+    shutil.rmtree(local_path, ignore_errors=True)
+
+    # Salva o DataFrame particionado localmente em Parquet
+    df.repartition("country", "region") \
+      .write \
+      .partitionBy("country", "region") \
+      .mode("overwrite") \
+      .parquet(local_path)
+
+    # Inicializa o cliente S3 com configuração Mage.ai
+    s3 = S3.with_config(ConfigFileLoader(config_path, config_profile))
+
+    import os
+
+    # Upload somente arquivos .parquet, ignorando .crc e outros
+    for root, _, files in os.walk(local_path):
+        for file in files:
+            if not file.endswith(".parquet"):
+                continue  # Ignora arquivos .crc e outros não parquet
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, local_path).replace("\\", "/")
+            s3_key = f"{s3_prefix}/{relative_path}"
+            s3.export(full_path, bucket_name, s3_key)
+
+    print(f"Exportação concluída com sucesso no caminho s3://{bucket_name}/{s3_prefix}/")

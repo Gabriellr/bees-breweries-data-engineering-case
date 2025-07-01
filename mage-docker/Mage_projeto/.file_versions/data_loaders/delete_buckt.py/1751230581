@@ -1,0 +1,60 @@
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+from mage_ai.io.s3 import S3
+from os import path
+import boto3
+import logging
+
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+@data_loader
+def delete_file_from_s3(*args, **kwargs):
+    """
+    Deleta um arquivo específico de um bucket S3, se o parâmetro 'object_key' for fornecido.
+    Se não for, lista os arquivos disponíveis no bucket.
+    """
+
+    config_path = path.join(get_repo_path(), 'io_config.yaml')
+    config_profile = 'default'
+    bucket_name = 'db-inbev-gold-layer'
+
+    # Conexão boto3 para listagem e deleção
+    s3_client = boto3.client('s3')
+
+    # Verifica se object_key foi passado
+    object_key = kwargs.get('object_key')
+
+    if not object_key:
+        logging.warning("⚠️ Parâmetro 'object_key' não fornecido. Listando arquivos no bucket...")
+        response = s3_client.list_objects_v2(Bucket=bucket_name)
+        if 'Contents' not in response:
+            raise Exception(f"🪣 Nenhum arquivo encontrado no bucket: {bucket_name}")
+        
+        print("📂 Arquivos encontrados no bucket:")
+        for obj in response['Contents']:
+            print(f" - {obj['Key']}")
+        
+        raise ValueError("❌ Parâmetro 'object_key' é obrigatório para deletar o arquivo. Exemplo: {'object_key': 'raw_gold.parquet'}")
+
+    # Executa a deleção com segurança
+    try:
+        logging.info(f"🗑️ Deletando s3://{bucket_name}/{object_key} ...")
+        s3_client.delete_object(Bucket=bucket_name, Key=object_key)
+        logging.info(f"✅ Arquivo deletado com sucesso.")
+        return f"Arquivo deletado: s3://{bucket_name}/{object_key}"
+    except Exception as e:
+        logging.error(f"❌ Erro ao deletar arquivo: {str(e)}")
+        raise
+        
+
+@test
+def test_output(output, *args) -> None:
+    """
+    Testa se o bloco rodou e retornou uma mensagem de sucesso.
+    """
+    assert output is not None, '❌ O output está vazio.'
+    print(output)

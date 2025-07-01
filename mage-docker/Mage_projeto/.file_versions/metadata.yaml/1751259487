@@ -1,0 +1,13 @@
+notification_config:
+  alert_on:
+    - trigger_failure
+
+  email_config:
+    email: gabrieltatianarodrigues@hotmail.com
+
+  message_templates:
+    failure:
+      details: |
+        ❌ Pipeline *{pipeline_uuid}* falhou!
+        Veja mais: {pipeline_run_url}
+        Trigger: {pipeline_schedule_name}

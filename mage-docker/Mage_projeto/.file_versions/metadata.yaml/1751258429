@@ -1,0 +1,7 @@
+notification_config:
+  alert_on:
+    - trigger_failure
+  alert_targets:
+    - type: email
+      recipients:
+        - gabrieltatianarodrigues@hotmail.com

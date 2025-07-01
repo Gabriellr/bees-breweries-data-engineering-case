@@ -1,0 +1,8 @@
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "spring_silence"}, "timestamp": 1751123144, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "data_importe_api"}, "timestamp": 1751124315, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "teste_s3"}, "timestamp": 1751138951, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "tedte"}, "timestamp": 1751142089, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "elt_proj_breweries"}, "timestamp": 1751146202, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "elt_proj_breweries"}, "timestamp": 1751146534, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "elt_proj_breweries_bronze"}, "timestamp": 1751147481, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "elt_proj_breweries"}, "timestamp": 1751153826, "user": null}

@@ -1,0 +1,20 @@
+uuid: test_alert_email
+name: Teste de Alerta por E-mail (Hotmail)
+type: python
+schedule_interval: '@once'
+
+notification_config:
+  alert_on:
+  - trigger_failure
+
+  email_config:
+    recipients:
+    - gabrieltatianarodrigues@hotmail.com
+
+  message_templates:
+    failure:
+      details:
+        ❌ Pipeline *{pipeline_uuid}* falhou!
+        Veja mais: {pipeline_run_url}
+        Trigger: {pipeline_schedule_name}
+project_uuid: bcc5999366f343a2947ec760549f1b4c

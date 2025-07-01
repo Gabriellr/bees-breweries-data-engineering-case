@@ -1,0 +1,34 @@
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+from mage_ai.io.s3 import S3
+from os import path
+import logging
+
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+
+@data_loader
+def delete_file_from_s3(*args, **kwargs):
+    """
+    Deleta um arquivo específico de um bucket S3 configurado via Mage.io.
+    """
+
+    # Caminho para o arquivo de configuração do Mage
+    config_path = path.join(get_repo_path(), 'io_config.yaml')
+    config_profile = 'default'
+
+    # Defina aqui seu bucket e o caminho do objeto a ser deletado
+    bucket_name = 'db-inbev-gold-layer'
+    object_key = kwargs.get('object_key', 'raw_gold.parquet')  # Exemplo: 'raw_gold.parquet'
+
+    logging.info(f"🗑️ Deletando s3://{bucket_name}/{object_key}...")
+
+    # Inicializa cliente S3 do Mage com config
+    s3 = S3.with_config(ConfigFileLoader(config_path, config_profile))
+
+    # Executa a exclusão
+    s3.delete(bucket_name, object_key)
+
+    logging.info(f"✅ Arquivo s3://{bucket_name}/{object_key} deletado com sucesso.")
+
+    return f"Arquivo deletado: s3://{bucket_name}/{object_key}"

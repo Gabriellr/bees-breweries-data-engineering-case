@@ -1,0 +1,23 @@
+import smtplib
+from email.mime.text import MIMEText
+
+smtp_host = "smtp.office365.com"
+smtp_port = 465
+username = "gabrieltatianarodrigues@hotmail.com"
+password = "85732658@"
+
+msg = MIMEText("Teste SMTP via Hotmail.")
+msg["Subject"] = "Alerta de Teste"
+msg["From"] = username
+msg["To"] = username
+
+try:
+    server = smtplib.SMTP(smtp_host, smtp_port)
+    server.starttls()
+    server.login(username, password)
+    server.send_message(msg)
+    server.quit()
+    print("✅ E-mail enviado com sucesso!")
+except Exception as e:
+    print("❌ Falha ao enviar:")
+    print(e)

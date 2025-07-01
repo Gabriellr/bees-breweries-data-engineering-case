@@ -1,0 +1,17 @@
+notification_config:
+  alert_on:
+  - trigger_failure
+
+  email_config:
+    email: gabrieltatianarodrigues@hotmail.com
+
+slack_config:
+    webhook_url: https://hooks.slack.com/services/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
+
+message_templates:
+    failure:
+      details: |
+        ❌ Pipeline *{pipeline_uuid}* falhou!
+        Link: {pipeline_run_url}
+        Trigger: {pipeline_schedule_name}
+project_uuid: 5d192c69733a4e4db76340396076dbfe

@@ -1,0 +1,121 @@
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+from mage_ai.io.s3 import S3
+from pandas import DataFrame
+from os import path
+import shutil
+import logging
+import os
+import time
+from datetime import datetime
+from pyspark.sql import SparkSession
+
+# Garante que o decorador do Mage esteja disponível
+if 'data_exporter' not in globals():
+    from mage_ai.data_preparation.decorators import data_exporter
+
+@data_exporter
+def export_data_to_s3(df: DataFrame, **kwargs) -> None:
+    """
+    Exporta DataFrame para o bucket S3, particionado por 'country' e 'region',
+    com PySpark e upload via Mage.ai. Inclui:
+    - Versionamento por data (YYYY-MM-DD)
+    - Limpeza do prefixo S3 antes de upload
+    - Upload com 3 tentativas
+    - Criação do marcador _SUCCESS
+    """
+
+    # Configuração Mage
+    config_path = path.join(get_repo_path(), 'io_config.yaml')
+    config_profile = 'default'
+
+    bucket_name = 'db-inbev-silver-layer'
+    folder_name = datetime.today().strftime('%Y-%m-%d')
+    s3_prefix = f"breweries_raw/{folder_name}"  # ✅ versionado por data
+
+    # Inicializa Spark
+    spark = SparkSession.builder.getOrCreate()
+
+    # Converte para Spark se necessário
+    if not hasattr(df, 'repartition'):
+        df = spark.createDataFrame(df)
+
+    # Caminho local temporário
+    local_path = f"/tmp/{folder_name}_breweries_raw"
+    shutil.rmtree(local_path, ignore_errors=True)
+
+    # Salva localmente em Parquet particionado
+    try:
+        df.repartition("country", "region") \
+          .write \
+          .partitionBy("country", "region") \
+          .mode("overwrite") \
+          .parquet(local_path)
+        logging.info(f"Dados salvos localmente em: {local_path}")
+    except Exception as e:
+        logging.error(f"Erro ao salvar dados localmente: {str(e)}")
+        raise
+
+    # Inicializa cliente S3 Mage
+    s3 = S3.with_config(ConfigFileLoader(config_path, config_profile))
+
+    # 🔁 Limpa o prefixo S3 se houver dados antigos
+    try:
+        logging.info(f"Limpando s3://{bucket_name}/{s3_prefix}/ ...")
+        objects_to_delete = s3._client.list_objects_v2(
+            Bucket=bucket_name,
+            Prefix=s3_prefix
+        ).get('Contents', [])
+
+        if objects_to_delete:
+            for obj in objects_to_delete:
+                s3._client.delete_object(Bucket=bucket_name, Key=obj['Key'])
+            logging.info(f"{len(objects_to_delete)} arquivos removidos do S3.")
+        else:
+            logging.info("Nenhum arquivo anterior encontrado para remover.")
+    except Exception as e:
+        logging.error(f"Erro ao limpar prefixo no S3: {str(e)}")
+        raise
+
+    # 🚀 Faz upload dos arquivos .parquet com 3 tentativas
+    for root, _, files in os.walk(local_path):
+        for file in files:
+            if not file.endswith(".parquet"):
+                continue
+
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, local_path).replace("\\", "/")
+            s3_key = f"{s3_prefix}/{relative_path}"
+
+            for attempt in range(1, 4):
+                try:
+                    logging.info(f"Enviando: {s3_key} (tentativa {attempt})")
+                    s3.export(full_path, bucket_name, s3_key)
+                    logging.info(f"Upload OK: {s3_key}")
+                    break
+                except Exception as e:
+                    logging.warning(f"Erro ao enviar {s3_key} (tentativa {attempt}): {str(e)}")
+                    if attempt < 3:
+                        time.sleep(2)
+                    else:
+                        logging.error(f"Falha definitiva ao enviar {s3_key}")
+                        raise
+
+    # ✅ Criação e envio do _SUCCESS
+    success_s3_key = f"{s3_prefix}/_SUCCESS"
+    success_marker_path = os.path.join(local_path, "_SUCCESS")
+    open(success_marker_path, 'w').close()  # Cria arquivo local vazio
+
+    try:
+        # Se já existir, remove o anterior
+        if s3._client.list_objects_v2(Bucket=bucket_name, Prefix=success_s3_key).get('Contents'):
+            logging.info(f"Arquivo _SUCCESS já existe, deletando...")
+            s3._client.delete_object(Bucket=bucket_name, Key=success_s3_key)
+
+        # Envia novo
+        s3.export(success_marker_path, bucket_name, success_s3_key)
+        logging.info(f"_SUCCESS enviado: s3://{bucket_name}/{success_s3_key}")
+    except Exception as e:
+        logging.warning(f"Erro ao criar/enviar _SUCCESS: {str(e)}")
+
+    logging.info(f"Pipeline concluído com sucesso. Dados em: s3://{bucket_name}/{s3_prefix}/")

@@ -1,0 +1,1 @@
+{"address_1": "str", "address_2": "str", "address_3": "str", "brewery_type": "str", "city": "str", "country": "str", "id": "str", "latitude": "float64", "longitude": "float64", "name": "str", "phone": "str", "postal_code": "str", "state": "str", "state_province": "str", "street": "str", "website_url": "str"}

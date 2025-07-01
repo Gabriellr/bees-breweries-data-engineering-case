@@ -1,0 +1,1 @@
+{"brewery_type": "str", "country": "str", "region": "str", "brewery_count": "int64"}

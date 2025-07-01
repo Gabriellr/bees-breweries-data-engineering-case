@@ -1,0 +1,16 @@
+notification_config:
+  alert_on:
+    - trigger_failure
+    - trigger_passed_sla
+
+  alert_targets:
+    - type: slack
+      slack_config:
+        webhook_url: https://hooks.slack.com/services/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
+
+  message_templates:
+    failure:
+      details: |
+        ❌ Pipeline *{pipeline_uuid}* falhou!
+        Link: {pipeline_run_url}
+        Trigger: {pipeline_schedule_name}

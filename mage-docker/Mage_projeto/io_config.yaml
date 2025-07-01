@@ -1,0 +1,12 @@
+default:
+  aws_access_key_id: ${AWS_ACCESS_KEY_ID}
+  aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
+  region: us-east-1
+  # PostgresSQL
+  POSTGRES_CONNECT_TIMEOUT: 10
+  POSTGRES_DBNAME: docker
+  POSTGRES_SCHEMA: docker # Optional
+  POSTGRES_USER: airflow
+  POSTGRES_PASSWORD: airflow
+  POSTGRES_HOST: host.docker.internal
+  POSTGRES_PORT: 5432

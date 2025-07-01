@@ -1,0 +1,55 @@
+from os import path
+from mage_ai.settings.repo import get_repo_path
+from pyspark.sql import SparkSession
+import time
+
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+@data_loader
+def load_from_s3_bucket(*args, **kwargs):
+    """
+    Lê arquivo JSON de um bucket S3 usando Spark, com até 3 tentativas em caso de falha.
+    Certifique-se de que o Spark está configurado para acessar o S3 via s3a://
+    """
+
+    bucket_name = 'db-inbev-bronze-layer'
+    object_key = 'breweries_raw.json'
+    s3_path = f's3a://{bucket_name}/{object_key}'
+
+    max_retries = 3
+    delay = 5  # segundos entre tentativas
+
+    spark = SparkSession.builder.appName("LoadFromS3").getOrCreate()
+
+    # Opcional: configurar credenciais AWS no Spark, se necessário
+    # spark._jsc.hadoopConfiguration().set("fs.s3a.access.key", "<SEU_ACCESS_KEY>")
+    # spark._jsc.hadoopConfiguration().set("fs.s3a.secret.key", "<SEU_SECRET_KEY>")
+    # spark._jsc.hadoopConfiguration().set("fs.s3a.endpoint", "s3.amazonaws.com")
+
+    for attempt in range(1, max_retries + 1):
+        try:
+            df = spark.read.json(s3_path)
+            # Se chegou aqui, leitura bem sucedida
+            return df
+
+        except Exception as e:
+            print(f"Tentativa {attempt} de {max_retries} falhou: {e}")
+            if attempt == max_retries:
+                # Última tentativa, relança o erro
+                raise
+            else:
+                # Aguarda um pouco antes de tentar de novo
+                time.sleep(delay)
+
+
+@test
+def test_output(output, *args) -> None:
+    """
+    Testa se a saída não está vazia.
+    """
+    assert output is not None, 'O DataFrame está indefinido'
+    assert output.count() > 0, 'O DataFrame está vazio'

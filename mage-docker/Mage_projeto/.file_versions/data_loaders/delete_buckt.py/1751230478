@@ -1,0 +1,78 @@
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+import boto3
+from os import path
+import logging
+
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+
+@data_loader
+def delete_file_from_s3(*args, **kwargs):
+    """
+    Deleta um arquivo específico de um bucket S3 usando boto3.
+    """
+
+    # Bucket e objeto (arquivo) que será deletado
+    bucket_name = 'db-inbev-gold-layer'
+    object_key = kwargs.get('object_key', 'raw_gold.parquet')  # Caminho no S3
+
+    # Inicializa cliente boto3 (usa as credenciais da AWS no ambiente)
+    s3_client = boto3.client('s3')
+
+    try:
+        logging.info(f"🗑️ Deletando s3://{bucket_name}/{object_key}...")
+        s3_client.delete_object(Bucket=bucket_name, Key=object_key)
+        logging.info(f"from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+import boto3
+from os import path
+import logging
+
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+
+@data_loader
+def delete_file_from_s3(*args, **kwargs):
+    """
+    Deleta um arquivo específico dos buckets S3: gold, silver e bronze, usando boto3.
+    O nome do arquivo deve ser passado como 'object_key' nos kwargs.
+    """
+
+    # Lista dos buckets a serem verificados
+    buckets = [
+        'db-inbev-gold-layer',
+        'db-inbev-silver-layer',
+        'db-inbev-bronze-layer'
+    ]
+
+    # Nome do arquivo/objeto a ser deletado (ex: 'raw_gold.parquet')
+    object_key = kwargs.get('object_key')
+
+    if not object_key:
+        raise ValueError("❌ Parâmetro 'object_key' é obrigatório para deletar o arquivo.")
+
+    # Inicializa cliente boto3 com credenciais AWS padrão
+    s3_client = boto3.client('s3')
+
+    deleted_from = []
+
+    for bucket in buckets:
+        try:
+            logging.info(f"🗑️ Tentando deletar s3://{bucket}/{object_key} ...")
+            s3_client.delete_object(Bucket=bucket, Key=object_key)
+            logging.info(f"✅ Arquivo deletado de {bucket}.")
+            deleted_from.append(bucket)
+        except Exception as e:
+            logging.warning(f"⚠️ Não foi possível deletar de {bucket}: {str(e)}")
+
+    if not deleted_from:
+        raise Exception("❌ Falha ao deletar o arquivo em todos os buckets.")
+
+    return f" Arquivo deletado dos buckets: {', '.join(deleted_from)}"
+✅ Arquivo deletado com sucesso.")
+        return f"Arquivo deletado: s3://{bucket_name}/{object_key}"
+
+    except Exception as e:
+        logging.error(f"❌ Falha ao deletar: {str(e)}")
+        raise

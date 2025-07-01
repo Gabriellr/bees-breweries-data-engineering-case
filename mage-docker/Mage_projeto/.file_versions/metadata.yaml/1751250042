@@ -1,0 +1,17 @@
+project_uuid: 3678de458a5b4034bcd4b09bb89ddcf1
+notification_config:
+  alert_on:
+    - trigger_failure
+    - trigger_passed_sla
+
+  alert_targets:
+    - type: slack
+      slack_config:
+        webhook_url: https://hooks.slack.com/services/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
+
+  message_templates:
+    failure:
+      details: >
+        Failed to execute pipeline {pipeline_run_url}.
+        Pipeline uuid: {pipeline_uuid}. Trigger name: {pipeline_schedule_name}.
+        Test custom message.

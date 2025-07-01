@@ -1,0 +1,82 @@
+from mage_ai.data_cleaner.transformer_actions.base import BaseAction
+from mage_ai.data_cleaner.transformer_actions.constants import ActionType, Axis
+from mage_ai.data_cleaner.transformer_actions.utils import build_transformer_action
+from pandas import DataFrame
+import numpy as np
+import logging
+import time
+
+# Verifica se está no ambiente Mage e importa os decoradores necessários
+if 'transformer' not in globals():
+    from mage_ai.data_preparation.decorators import transformer
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+@transformer
+def execute_transformer_action(df: DataFrame, *args, **kwargs) -> DataFrame:
+    """
+    Transforma o DataFrame:
+    - Remove duplicatas com BaseAction
+    - Concatena address_2 + address_3
+    - Faz coalesce entre colunas redundantes
+    - Retorna um DataFrame com colunas selecionadas
+    """
+
+    max_retries = 3  # Número de tentativas
+    for attempt in range(1, max_retries + 1):
+        try:
+            logging.info(f"Tentativa {attempt}: iniciando transformação do DataFrame.")
+
+            # 🔹 Remove duplicatas com BaseAction
+            action = build_transformer_action(
+                df,
+                action_type=ActionType.DROP_DUPLICATE,
+                arguments=df.columns,
+                axis=Axis.ROW,
+                options={'keep': 'first'},
+            )
+            df_cleaned = BaseAction(action).execute(df)
+
+            # 🔹 Concatena address_2 e address_3 em uma única coluna
+            df_cleaned['address_2'] = np.where(
+                df_cleaned[['address_2', 'address_3']].notnull().any(axis=1),
+                df_cleaned[['address_2', 'address_3']].fillna('').agg(' '.join, axis=1),
+                None
+            )
+
+            # 🔹 Coalesce: preenche region com state_province ou state
+            df_cleaned['region'] = df_cleaned['state_province'].combine_first(df_cleaned['state'])
+
+            # 🔹 Coalesce: preenche address_1 com street
+            df_cleaned['address_1'] = df_cleaned['address_1'].combine_first(df_cleaned['street'])
+
+            # 🔹 Cópias auxiliares para agregações futuras
+            df_cleaned['region_copy'] = df_cleaned['region']
+            df_cleaned['country_copy'] = df_cleaned['country']
+
+            # 🔹 Seleciona as colunas finais
+            cols_final = [
+                'id', 'name', 'brewery_type', 'country', 'country_copy', 'region', 'region_copy', 'city',
+                'postal_code', 'address_1', 'address_2', 'longitude',
+                'latitude', 'phone', 'website_url'
+            ]
+            df_result = df_cleaned[cols_final]
+
+            logging.info("Transformação concluída com sucesso.")
+            return df_result
+
+        except Exception as e:
+            logging.warning(f"Erro ao transformar os dados na tentativa {attempt}: {str(e)}")
+            if attempt < max_retries:
+                time.sleep(2)  # Aguarda antes de tentar novamente
+            else:
+                logging.error("Todas as tentativas de transformação falharam.")
+                raise e  # Interrompe o pipeline no Mage
+
+@test
+def test_output(output, *args) -> None:
+    """
+    Testa se o DataFrame transformado tem conteúdo.
+    """
+    assert output is not None and len(output) > 0, 'O output está vazio ou indefinido'
+    print(f" Transformação gerou {len(output)} registros.")

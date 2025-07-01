@@ -1,0 +1,3 @@
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "etl_silver"}, "timestamp": 1751174598, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "elt_proj_breweries"}, "timestamp": 1751213950, "user": null}
+{"operation": "create", "resource": {"type": "pipeline", "uuid": "delete_file_bucket"}, "timestamp": 1751240290, "user": null}

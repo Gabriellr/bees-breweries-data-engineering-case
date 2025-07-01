@@ -1,0 +1,50 @@
+# Importa os decoradores apenas se ainda não estiverem carregados (necessário no ambiente do Mage.ai)
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+import time
+from pyspark.sql import SparkSession
+
+@data_loader
+def load_from_s3_bucket(*args, **kwargs):
+    """
+    Lê arquivo JSON de um bucket S3 usando Spark,
+    com até 3 tentativas em caso de falha.
+    """
+
+    bucket_name = 'db-inbev-bronze-layer'
+    object_key = 'breweries_raw.json'
+    s3_path = f's3a://{bucket_name}/{object_key}'
+
+    max_attempts = 3
+    attempt = 0
+    spark = SparkSession.builder.appName("LoadFromS3").getOrCreate()
+
+    while attempt < max_attempts:
+        try:
+            df_spark = spark.read.json(s3_path)
+            # Se conseguiu ler, interrompe o loop
+            break
+
+        except Exception as e:
+            attempt += 1
+            print(f"Tentativa {attempt} de {max_attempts} falhou: {e}")
+            if attempt == max_attempts:
+                spark.stop()
+                raise RuntimeError(f"Falha ao carregar dados do S3 após {max_attempts} tentativas") from e
+            time.sleep(5)  # Espera 5 segundos antes de tentar novamente
+
+    # Converte DataFrame Spark para Pandas para compatibilidade com Mage.ai
+    df_pandas = df_spark.toPandas()
+
+    spark.stop()  # Libera recursos da SparkSession
+
+    return df_pandas
+
+
+@test
+def test_output(df, *args) -> None:
+    assert df is not None, 'O DataFrame está indefinido'
+    assert len(df.index) > 0, 'O DataFrame está vazio'

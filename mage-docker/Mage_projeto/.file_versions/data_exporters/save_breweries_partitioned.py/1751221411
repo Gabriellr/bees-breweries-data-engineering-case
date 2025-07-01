@@ -1,0 +1,113 @@
+import boto3
+from botocore.exceptions import ClientError
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+from mage_ai.io.s3 import S3
+from pandas import DataFrame
+from os import path
+import shutil
+import logging
+import os
+import time
+from datetime import datetime
+from pyspark.sql import SparkSession
+
+if 'data_exporter' not in globals():
+    from mage_ai.data_preparation.decorators import data_exporter
+
+
+@data_exporter
+def export_data_to_s3(df: DataFrame, **kwargs) -> None:
+    config_path = path.join(get_repo_path(), 'io_config.yaml')
+    config_profile = 'default'
+
+    bucket_name = 'db-inbev-silver-layer'
+    folder_name = datetime.today().strftime('%Y-%m-%d')
+    s3_prefix = f"breweries_raw/{folder_name}"
+
+    spark = SparkSession.builder.getOrCreate()
+
+    if not hasattr(df, 'repartition'):
+        df = spark.createDataFrame(df)
+
+    local_path = f"/tmp/{folder_name}_breweries_raw"
+    shutil.rmtree(local_path, ignore_errors=True)
+
+    try:
+        df.repartition("country", "region") \
+          .write \
+          .partitionBy("country", "region") \
+          .mode("overwrite") \
+          .parquet(local_path)
+        logging.info(f"Dados salvos localmente em: {local_path}")
+    except Exception as e:
+        logging.error(f"Erro ao salvar dados localmente: {str(e)}")
+        raise
+
+    # Mage.ai S3 para upload
+    s3 = S3.with_config(ConfigFileLoader(config_path, config_profile))
+
+    # boto3 para manipulação direta (deletar + enviar _SUCCESS)
+    session = boto3.Session()
+    s3_client = session.client('s3')
+
+    def delete_prefix_objects(bucket, prefix):
+        paginator = s3_client.get_paginator('list_objects_v2')
+        pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
+
+        deleted = 0
+        for page in pages:
+            if 'Contents' in page:
+                objects = [{'Key': obj['Key']} for obj in page['Contents']]
+                s3_client.delete_objects(Bucket=bucket, Delete={'Objects': objects})
+                deleted += len(objects)
+        return deleted
+
+    # Limpa prefixo antes de enviar
+    try:
+        logging.info(f"Deletando arquivos antigos em s3://{bucket_name}/{s3_prefix}/ ...")
+        deleted_count = delete_prefix_objects(bucket_name, s3_prefix)
+        logging.info(f"{deleted_count} arquivos deletados.")
+    except ClientError as e:
+        logging.error(f"Erro ao deletar arquivos antigos: {e}")
+        raise
+
+    # Upload dos arquivos parquet via Mage S3 com 3 tentativas
+    for root, _, files in os.walk(local_path):
+        for file in files:
+            if not file.endswith(".parquet"):
+                continue
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, local_path).replace("\\", "/")
+            s3_key = f"{s3_prefix}/{relative_path}"
+
+            for attempt in range(1, 4):
+                try:
+                    logging.info(f"Enviando: {s3_key} (tentativa {attempt})")
+                    s3.export(full_path, bucket_name, s3_key)
+                    logging.info(f"Upload OK: {s3_key}")
+                    break
+                except Exception as e:
+                    logging.warning(f"Erro no upload {s3_key} (tentativa {attempt}): {str(e)}")
+                    if attempt < 3:
+                        time.sleep(2)
+                    else:
+                        logging.error(f"Falha definitiva no upload de {s3_key}")
+                        raise
+
+    # Cria e envia arquivo _SUCCESS via boto3 (para evitar erro de formato)
+    success_s3_key = f"{s3_prefix}/_SUCCESS"
+    success_marker_path = os.path.join(local_path, "_SUCCESS")
+
+    with open(success_marker_path, 'w') as f:
+        f.write('')
+
+    try:
+        with open(success_marker_path, 'rb') as data:
+            s3_client.put_object(Bucket=bucket_name, Key=success_s3_key, Body=data)
+        logging.info(f"_SUCCESS enviado para s3://{bucket_name}/{success_s3_key}")
+    except Exception as e:
+        logging.error(f"Falha ao enviar arquivo _SUCCESS: {str(e)}")
+        raise
+
+    logging.info(f"Exportação concluída com sucesso em s3://{bucket_name}/{s3_prefix}/")

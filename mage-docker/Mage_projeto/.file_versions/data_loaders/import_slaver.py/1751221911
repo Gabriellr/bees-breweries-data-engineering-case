@@ -1,0 +1,56 @@
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+from os import path
+import boto3
+from botocore.exceptions import ClientError
+from pyspark.sql import SparkSession
+
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+@data_loader
+def load_from_s3_bucket(*args, **kwargs):
+    """
+    Lê arquivos .parquet de um bucket S3 usando Spark,
+    somente se o arquivo _SUCCESS existir no prefixo dado.
+    """
+    config_path = path.join(get_repo_path(), 'io_config.yaml')
+    config_profile = 'default'
+
+    bucket_name = 'db-inbev-silver-layer'
+    prefix = kwargs.get('prefix', '')  # Exemplo: 'breweries_raw/2025-06-29/'
+
+    # Inicializa boto3 para verificar o arquivo _SUCCESS
+    s3_client = boto3.client('s3')
+
+    success_key = f"{prefix}_SUCCESS" if prefix.endswith('/') else f"{prefix}/_SUCCESS"
+
+    try:
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=success_key)
+        success_exists = 'Contents' in response and any(obj['Key'] == success_key for obj in response['Contents'])
+    except ClientError as e:
+        raise RuntimeError(f"Erro ao verificar _SUCCESS no bucket: {str(e)}")
+
+    if not success_exists:
+        raise FileNotFoundError(f"Arquivo _SUCCESS não encontrado em s3://{bucket_name}/{success_key}")
+
+    # Inicializa SparkSession
+    spark = SparkSession.builder.getOrCreate()
+
+    # Define o caminho completo no S3 para os arquivos parquet
+    # Spark geralmente usa s3a:// para S3, ajuste conforme ambiente Mage
+    s3_path = f"s3a://{bucket_name}/{prefix}"
+
+    # Lê todos arquivos parquet do prefixo com Spark
+    df = spark.read.parquet(s3_path)
+
+    return df
+
+
+@test
+def test_output(output, *args) -> None:
+    assert output is not None and output.count() > 0, 'O DataFrame Spark está vazio'
+    print(f"✅ DataFrame carregado com {output.count()} registros.")

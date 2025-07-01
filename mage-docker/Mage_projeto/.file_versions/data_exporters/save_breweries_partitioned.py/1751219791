@@ -1,0 +1,86 @@
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+from mage_ai.io.s3 import S3
+from pandas import DataFrame
+from os import path
+import shutil
+import logging
+import os
+import time
+from datetime import datetime
+from pyspark.sql import SparkSession
+
+# Garante que o decorador do Mage esteja disponível
+if 'data_exporter' not in globals():
+    from mage_ai.data_preparation.decorators import data_exporter
+
+@data_exporter
+def export_data_to_s3(df: DataFrame, **kwargs) -> None:
+    """
+    Exporta DataFrame (pandas ou Spark) para o bucket S3 (Mage.ai),
+    particionando por 'country' e 'region' com PySpark, usando 3 tentativas
+    de envio em caso de falha.
+    """
+    # Caminho de configuração do Mage
+    config_path = path.join(get_repo_path(), 'io_config.yaml')
+    config_profile = 'default'
+
+    # Nome do bucket e prefixo/pasta destino no S3
+    bucket_name = 'db-inbev-silver-layer'
+    folder_name = datetime.today().strftime('%Y-%m-%d')
+    s3_prefix = f"breweries_raw"
+
+    # Cria sessão Spark (ou pega existente)
+    spark = SparkSession.builder.getOrCreate()
+
+    # Converte para Spark DataFrame se for pandas
+    if not hasattr(df, 'repartition'):
+        df = spark.createDataFrame(df)
+
+    # Define caminho local temporário para salvar os arquivos particionados
+    local_path = f"/tmp/{folder_name}_breweries_raw"
+
+    # Remove diretório local anterior (se existir)
+    shutil.rmtree(local_path, ignore_errors=True)
+
+    try:
+        # Salva particionado por 'country' e 'region' no formato Parquet
+        df.repartition("country", "region") \
+          .write \
+          .partitionBy("country", "region") \
+          .mode("overwrite") \
+          .parquet(local_path)
+        logging.info(f" Dados particionados salvos localmente em: {local_path}")
+    except Exception as e:
+        logging.error(f" Erro ao salvar dados localmente com Spark: {str(e)}")
+        raise
+
+    # Inicializa o cliente Mage S3
+    s3 = S3.with_config(ConfigFileLoader(config_path, config_profile))
+
+    # Realiza upload com até 3 tentativas
+    for root, _, files in os.walk(local_path):
+        for file in files:
+            if not file.endswith(".parquet"):
+                continue  # Ignora arquivos não-Parquet (ex: _SUCCESS, .crc)
+
+            full_path = os.path.join(root, file)
+            relative_path = os.path.relpath(full_path, local_path).replace("\\", "/")
+            s3_key = f"{s3_prefix}/{relative_path}"
+
+            max_retries = 3
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logging.info(f"Enviando: {s3_key} (tentativa {attempt})")
+                    s3.export(full_path, bucket_name, s3_key)
+                    logging.info(f" Upload concluído: {s3_key}")
+                    break  # Sucesso, não tenta mais
+                except Exception as e:
+                    logging.warning(f"Falha no upload {s3_key}: {str(e)}")
+                    if attempt < max_retries:
+                        time.sleep(2)  # Espera antes de tentar novamente
+                    else:
+                        logging.error(f" Falha permanente ao enviar {s3_key}")
+                        raise  # Interrompe a execução do pipeline
+
+    logging.info(f"Todos os arquivos foram enviados com sucesso para s3://{bucket_name}/{s3_prefix}/")

@@ -1,0 +1,23 @@
+project_uuid: 3678de458a5b4034bcd4b09bb89ddcf1
+uuid: seu_pipeline
+name: Pipeline com Alerta no Slack
+type: python
+schedule_interval: '@once'
+
+notification_config:
+  alert_on:
+    - trigger_failure    # quando o pipeline falhar
+    - trigger_passed_sla # quando passar do SLA definido
+
+  alert_targets:
+    - type: slack
+      slack_config:
+        webhook_url: https://hooks.slack.com/services/T093LEDC4D8/B093F6JP52S/4bhGfesv5LlOHK0SLxQOTest
+
+  message_templates:
+    failure:
+      details: >
+        ❌ Falha ao executar o pipeline {pipeline_run_url}
+        • UUID: {pipeline_uuid}
+        • Trigger: {pipeline_schedule_name}
+        • Erro: veja detalhes na interface Mage.ai

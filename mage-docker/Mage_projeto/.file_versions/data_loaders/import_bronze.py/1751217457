@@ -1,0 +1,58 @@
+# Importa decoradores apenas se ainda não estiverem carregados (necessário no ambiente do Mage.ai)
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+import time
+import logging
+import pandas as pd
+import pandas.api.types as ptypes
+from pyspark.sql import SparkSession
+
+logging.basicConfig(level=logging.INFO)
+
+@data_loader
+def load_from_s3_bucket(*args, **kwargs):
+    """
+    Lê um arquivo JSON de um bucket S3 usando Spark com até 3 tentativas.
+    Retorna um DataFrame Pandas para compatibilidade com Mage.ai.
+    """
+    bucket_name = 'db-inbev-bronze-layer'
+    object_key = 'breweries_raw.json'
+    s3_path = f's3a://{bucket_name}/{object_key}'
+
+    max_attempts = 3
+    spark = SparkSession.builder.appName("LoadFromS3").getOrCreate()
+
+    try:
+        for attempt in range(1, max_attempts + 1):
+            try:
+                logging.info(f"Tentativa {attempt} de leitura: {s3_path}")
+                df_spark = spark.read.json(s3_path)
+                break
+            except Exception as e:
+                logging.warning(f"Tentativa {attempt} falhou: {e}")
+                if attempt == max_attempts:
+                    raise RuntimeError(f"Falha ao carregar dados do S3 após {max_attempts} tentativas") from e
+                time.sleep(5)
+
+        df_pandas = df_spark.toPandas()
+
+        # Validação de schema esperada
+        expected_columns = {
+            "id": "int64",
+            "name": "object",
+            "brewery_type": "object",
+            "city": "object",
+            "state": "object"
+        }
+
+        missing_columns = [col for col in expected_columns if col not in df_pandas.columns]
+        if missing_columns:
+            raise ValueError(f"Colunas ausentes no DataFrame: {missing_columns}")
+
+        # Verificação de tipos de dados
+        for col, expected_type in expected_columns.items():
+            if expected_type == "int64" and not ptypes.is_integer_dtype(df_pandas[col]):
+                raise TypeError(f"Coluna '{col}' não é do tip
