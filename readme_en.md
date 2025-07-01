@@ -47,6 +47,7 @@ The architecture organizes data into three main layers:
    ```bash
    git clone https://github.com/Gabriellr/bees-breweries-data-engineering-case.git
    cd bees-breweries-data-engineering-case
+   cd mage-docker
    ```
 
 2. **Configure Environment Variables**\
